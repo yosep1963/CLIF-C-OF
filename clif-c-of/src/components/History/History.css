@@ -1,0 +1,125 @@
+/* History Component Styles */
+
+.diagnostic-history {
+  margin-top: 1.5rem;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.history-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.clear-all-btn {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.clear-all-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.history-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.history-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.history-item-main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  cursor: pointer;
+}
+
+.history-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.history-grade {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.history-date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.history-item-right {
+  text-align: right;
+}
+
+.history-score {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.remove-btn {
+  padding: 0.875rem 1rem;
+  font-size: 1.25rem;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  border-left: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.remove-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.history-note {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+  .history-item-main {
+    padding: 0.75rem;
+  }
+}

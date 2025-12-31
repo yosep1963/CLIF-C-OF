@@ -1,0 +1,309 @@
+/* Results Component Styles - Medical Clean UI */
+
+.diagnosis-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Result Header */
+.result-header {
+  text-align: center;
+}
+
+.result-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.grade-display {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: #ffffff;
+  border: 3px solid;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.grade-label {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.grade-rationale {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Severity Indicator */
+.severity-indicator {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+}
+
+.severity-icon {
+  font-size: 1.5rem;
+}
+
+.severity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.severity-label {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.mortality-rate {
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.mortality-rate strong {
+  font-weight: 600;
+}
+
+/* Result Summary */
+.result-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Organ Cards Section */
+.organ-cards-section {
+  margin-top: 0.5rem;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.organ-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+/* Organ Card */
+.organ-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.875rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.organ-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.organ-card.is-failure {
+  border-width: 2px;
+}
+
+.organ-card.status-normal {
+  border-left: 4px solid #10B981;
+}
+
+.organ-card.status-warning {
+  border-left: 4px solid #F59E0B;
+}
+
+.organ-card.status-failure {
+  border-left: 4px solid #EF4444;
+}
+
+.organ-card.status-unknown {
+  border-left: 4px solid #9CA3AF;
+}
+
+.organ-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.organ-card-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.failure-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #EF4444;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.organ-card-body {
+  margin-bottom: 0.5rem;
+}
+
+.organ-card-indicator {
+  font-size: 0.625rem;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
+}
+
+.organ-card-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.organ-card-value .value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.organ-card-value .unit {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.organ-card-value .no-value {
+  font-size: 1.25rem;
+  color: #9ca3af;
+}
+
+.organ-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.score-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+}
+
+.score-badge.status-normal {
+  color: #059669;
+  background: #D1FAE5;
+}
+
+.score-badge.status-warning {
+  color: #D97706;
+  background: #FEF3C7;
+}
+
+.score-badge.status-failure {
+  color: #DC2626;
+  background: #FEE2E2;
+}
+
+.score-badge.status-unknown {
+  color: #6B7280;
+  background: #F3F4F6;
+}
+
+.status-text {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* Save Button */
+.save-button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2563eb;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-button:hover {
+  background: #1d4ed8;
+}
+
+.save-button:active {
+  background: #1e40af;
+}
+
+/* Next Step Notice */
+.next-step-notice {
+  text-align: center;
+  padding: 1rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 12px;
+}
+
+.next-step-notice p {
+  font-size: 0.875rem;
+  color: #92400e;
+  margin-bottom: 0.25rem;
+}
+
+.next-step-notice small {
+  font-size: 0.75rem;
+  color: #b45309;
+}
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+  .organ-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grade-display {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .grade-label {
+    font-size: 1.75rem;
+  }
+}
