@@ -2,7 +2,7 @@ import React from 'react';
 import NumericInput from './NumericInput';
 import ToggleSwitch from './ToggleSwitch';
 import HEGradeSelector from './HEGradeSelector';
-import { VALIDATION_RANGES, calculatePFRatio } from '../../logic/validation';
+import { VALIDATION_RANGES, calculatePFRatio, calculateMAP, calculateFiO2FromFlow } from '../../logic/validation';
 import './InputForm.css';
 
 function OrganInput({ inputs, errors, onChange }) {
@@ -10,7 +10,14 @@ function OrganInput({ inputs, errors, onChange }) {
     onChange({ ...inputs, [field]: value });
   };
 
-  const pfRatio = calculatePFRatio(inputs.pao2, inputs.fio2);
+  // MAP 계산 (SBP, DBP로부터)
+  const calculatedMAP = calculateMAP(inputs.sbp, inputs.dbp);
+
+  // FiO2 계산 (O2 유량으로부터)
+  const calculatedFiO2 = calculateFiO2FromFlow(inputs.o2Flow);
+
+  // P/F Ratio 계산 (계산된 FiO2 사용)
+  const pfRatio = calculatePFRatio(inputs.pao2, calculatedFiO2);
 
   return (
     <div className="organ-input-container">
@@ -92,17 +99,36 @@ function OrganInput({ inputs, errors, onChange }) {
           <span className="organ-icon">❤️</span>
           순환 (Circulation)
         </h3>
-        <NumericInput
-          label="MAP"
-          value={inputs.map}
-          onChange={(val) => handleChange('map', val)}
-          unit="mmHg"
-          placeholder="30 - 150"
-          error={errors?.map}
-          min={VALIDATION_RANGES.map.min}
-          max={VALIDATION_RANGES.map.max}
-          disabled={inputs.vasopressors}
-        />
+        <div className="blood-pressure-inputs">
+          <NumericInput
+            label="SBP"
+            value={inputs.sbp}
+            onChange={(val) => handleChange('sbp', val)}
+            unit="mmHg"
+            placeholder="60 - 250"
+            error={errors?.sbp}
+            min={VALIDATION_RANGES.sbp.min}
+            max={VALIDATION_RANGES.sbp.max}
+            disabled={inputs.vasopressors}
+          />
+          <NumericInput
+            label="DBP"
+            value={inputs.dbp}
+            onChange={(val) => handleChange('dbp', val)}
+            unit="mmHg"
+            placeholder="30 - 150"
+            error={errors?.dbp}
+            min={VALIDATION_RANGES.dbp.min}
+            max={VALIDATION_RANGES.dbp.max}
+            disabled={inputs.vasopressors}
+          />
+        </div>
+        {calculatedMAP && !inputs.vasopressors && (
+          <div className="calculated-value-display">
+            <span className="calculated-value-label">MAP:</span>
+            <span className="calculated-value">{calculatedMAP} mmHg</span>
+          </div>
+        )}
         <ToggleSwitch
           label="승압제 사용"
           checked={inputs.vasopressors || false}
@@ -128,16 +154,22 @@ function OrganInput({ inputs, errors, onChange }) {
             max={VALIDATION_RANGES.pao2.max}
           />
           <NumericInput
-            label="FiO₂"
-            value={inputs.fio2}
-            onChange={(val) => handleChange('fio2', val)}
-            unit="%"
-            placeholder="21 - 100"
-            error={errors?.fio2}
-            min={VALIDATION_RANGES.fio2.min}
-            max={VALIDATION_RANGES.fio2.max}
+            label="O₂ 유량"
+            value={inputs.o2Flow}
+            onChange={(val) => handleChange('o2Flow', val)}
+            unit="L/min"
+            placeholder="0 - 5"
+            error={errors?.o2Flow}
+            min={VALIDATION_RANGES.o2Flow.min}
+            max={VALIDATION_RANGES.o2Flow.max}
           />
         </div>
+        {calculatedFiO2 && (
+          <div className="calculated-value-display">
+            <span className="calculated-value-label">FiO₂:</span>
+            <span className="calculated-value">{calculatedFiO2}%</span>
+          </div>
+        )}
         {pfRatio && (
           <div className="pf-ratio-display">
             <span className="pf-ratio-label">P/F Ratio:</span>

@@ -4,9 +4,10 @@ export const VALIDATION_RANGES = {
   bilirubin: { min: 0.1, max: 50, unit: 'mg/dL' },
   creatinine: { min: 0.1, max: 15, unit: 'mg/dL' },
   inr: { min: 0.5, max: 10, unit: '' },
-  map: { min: 30, max: 150, unit: 'mmHg' },
+  sbp: { min: 60, max: 250, unit: 'mmHg' },
+  dbp: { min: 30, max: 150, unit: 'mmHg' },
   pao2: { min: 30, max: 600, unit: 'mmHg' },
-  fio2: { min: 21, max: 100, unit: '%' },
+  o2Flow: { min: 0, max: 5, unit: 'L/min' },
   pfRatio: { min: 50, max: 600, unit: '' }
 };
 
@@ -52,6 +53,30 @@ export function calculatePFRatio(pao2, fio2) {
   return Math.round(pao2Val / fio2Decimal);
 }
 
+// MAP 계산: MAP = (SBP + 2 * DBP) / 3
+export function calculateMAP(sbp, dbp) {
+  if (sbp === null || sbp === undefined || sbp === '') return null;
+  if (dbp === null || dbp === undefined || dbp === '') return null;
+
+  const sbpVal = parseFloat(sbp);
+  const dbpVal = parseFloat(dbp);
+
+  if (isNaN(sbpVal) || isNaN(dbpVal)) return null;
+
+  return Math.round((sbpVal + 2 * dbpVal) / 3);
+}
+
+// FiO2 계산: FiO2 = 21 + (4 * L/min) [nasal prong 기준]
+export function calculateFiO2FromFlow(o2FlowLpm) {
+  if (o2FlowLpm === null || o2FlowLpm === undefined || o2FlowLpm === '') return null;
+
+  const flowVal = parseFloat(o2FlowLpm);
+
+  if (isNaN(flowVal)) return null;
+
+  return 21 + (4 * flowVal);
+}
+
 export function validateAllInputs(inputs) {
   const errors = {};
   const validatedInputs = {};
@@ -80,12 +105,25 @@ export function validateAllInputs(inputs) {
     validatedInputs.inr = inrResult.value;
   }
 
-  // MAP 검증
-  const mapResult = validateValue('map', inputs.map);
-  if (!mapResult.valid) {
-    errors.map = mapResult.error;
+  // SBP 검증
+  const sbpResult = validateValue('sbp', inputs.sbp);
+  if (!sbpResult.valid) {
+    errors.sbp = sbpResult.error;
   } else {
-    validatedInputs.map = mapResult.value;
+    validatedInputs.sbp = sbpResult.value;
+  }
+
+  // DBP 검증
+  const dbpResult = validateValue('dbp', inputs.dbp);
+  if (!dbpResult.valid) {
+    errors.dbp = dbpResult.error;
+  } else {
+    validatedInputs.dbp = dbpResult.value;
+  }
+
+  // MAP 계산 (SBP, DBP가 모두 유효할 때)
+  if (validatedInputs.sbp && validatedInputs.dbp) {
+    validatedInputs.map = calculateMAP(validatedInputs.sbp, validatedInputs.dbp);
   }
 
   // PaO2 검증
@@ -96,12 +134,17 @@ export function validateAllInputs(inputs) {
     validatedInputs.pao2 = pao2Result.value;
   }
 
-  // FiO2 검증
-  const fio2Result = validateValue('fio2', inputs.fio2);
-  if (!fio2Result.valid) {
-    errors.fio2 = fio2Result.error;
+  // O2 Flow 검증
+  const o2FlowResult = validateValue('o2Flow', inputs.o2Flow);
+  if (!o2FlowResult.valid) {
+    errors.o2Flow = o2FlowResult.error;
   } else {
-    validatedInputs.fio2 = fio2Result.value;
+    validatedInputs.o2Flow = o2FlowResult.value;
+  }
+
+  // FiO2 계산 (O2 Flow가 유효할 때)
+  if (validatedInputs.o2Flow !== undefined) {
+    validatedInputs.fio2 = calculateFiO2FromFlow(validatedInputs.o2Flow);
   }
 
   // P/F ratio 계산

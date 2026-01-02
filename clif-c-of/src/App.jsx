@@ -3,7 +3,7 @@ import { OrganInput } from './components/InputForm';
 import { DiagnosisResult } from './components/Results';
 import { DiagnosticHistory } from './components/History';
 import { useDiagnosisHistory } from './hooks/useLocalStorage';
-import { validateAllInputs, calculatePFRatio } from './logic/validation';
+import { validateAllInputs, calculatePFRatio, calculateMAP, calculateFiO2FromFlow } from './logic/validation';
 import { calculateAllScores } from './logic/organScoring';
 import { determineACLFGrade, getMortalityInfo, getSeverityColor } from './logic/aclfGrading';
 import './styles/global.css';
@@ -14,10 +14,11 @@ const INITIAL_INPUTS = {
   rrt: false,
   heGrade: 0,
   inr: '',
-  map: '',
+  sbp: '',
+  dbp: '',
   vasopressors: false,
   pao2: '',
-  fio2: ''
+  o2Flow: ''
 };
 
 function App() {
