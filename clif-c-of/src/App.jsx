@@ -1,25 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { OrganInput } from './components/InputForm';
 import { DiagnosisResult } from './components/Results';
 import { DiagnosticHistory } from './components/History';
 import { useDiagnosisHistory } from './hooks/useLocalStorage';
-import { validateAllInputs, calculatePFRatio, calculateMAP, calculateFiO2FromFlow } from './logic/validation';
+import { validateAllInputs, calculatePFRatio } from './logic/validation';
 import { calculateAllScores } from './logic/organScoring';
 import { determineACLFGrade, getMortalityInfo, getSeverityColor } from './logic/aclfGrading';
+import { INITIAL_INPUTS } from './constants';
 import './styles/global.css';
-
-const INITIAL_INPUTS = {
-  bilirubin: '',
-  creatinine: '',
-  rrt: false,
-  heGrade: 0,
-  inr: '',
-  sbp: '',
-  dbp: '',
-  vasopressors: false,
-  pao2: '',
-  o2Flow: ''
-};
 
 function App() {
   const [activeTab, setActiveTab] = useState('input');

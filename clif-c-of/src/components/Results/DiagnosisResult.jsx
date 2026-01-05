@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import OrganCard from './OrganCard';
 import SeverityIndicator from './SeverityIndicator';
-import { getOrganDetails, ORGAN_NAMES } from '../../logic/organScoring';
+import { getOrganDetails } from '../../logic/organScoring';
+import { ORGAN_NAMES, GRADE_COLORS, ACLF_GRADES } from '../../constants';
 import './Results.css';
 
 function DiagnosisResult({ result, onSave }) {
@@ -18,24 +19,15 @@ function DiagnosisResult({ result, onSave }) {
     totalScore
   } = result;
 
-  const organList = Object.keys(ORGAN_NAMES).map((organ) =>
-    getOrganDetails(organ, scores[organ], inputs)
+  // 장기 목록 메모이제이션
+  const organList = useMemo(() =>
+    Object.keys(ORGAN_NAMES).map((organ) =>
+      getOrganDetails(organ, scores[organ], inputs)
+    ),
+    [scores, inputs]
   );
 
-  const getGradeColor = () => {
-    switch (grade) {
-      case 'No ACLF':
-        return '#10B981';
-      case 'ACLF-1':
-        return '#F59E0B';
-      case 'ACLF-2':
-        return '#EF4444';
-      case 'ACLF-3':
-        return '#DC2626';
-      default:
-        return '#6B7280';
-    }
-  };
+  const gradeColor = GRADE_COLORS[grade] || '#6B7280';
 
   return (
     <div className="diagnosis-result">
@@ -44,9 +36,9 @@ function DiagnosisResult({ result, onSave }) {
         <h2 className="result-title">진단 결과</h2>
         <div
           className="grade-display"
-          style={{ borderColor: getGradeColor() }}
+          style={{ borderColor: gradeColor }}
         >
-          <span className="grade-label" style={{ color: getGradeColor() }}>
+          <span className="grade-label" style={{ color: gradeColor }}>
             {grade}
           </span>
           <span className="grade-rationale">{rationaleKr}</span>
@@ -86,7 +78,7 @@ function DiagnosisResult({ result, onSave }) {
       )}
 
       {/* ACLF인 경우 다음 단계 안내 */}
-      {grade !== 'No ACLF' && (
+      {grade !== ACLF_GRADES.NO_ACLF && (
         <div className="next-step-notice">
           <p>
             정밀 예후 측정을 위해 <strong>CLIF-C ACLF Score</strong> 계산을
@@ -99,4 +91,4 @@ function DiagnosisResult({ result, onSave }) {
   );
 }
 
-export default DiagnosisResult;
+export default memo(DiagnosisResult);

@@ -1,24 +1,33 @@
-// 입력값 유효성 검사 로직
+/**
+ * 입력값 유효성 검사 및 계산 로직
+ * CLIF-C OF 점수 계산을 위한 입력값 검증
+ */
 
-export const VALIDATION_RANGES = {
-  bilirubin: { min: 0.1, max: 50, unit: 'mg/dL' },
-  creatinine: { min: 0.1, max: 15, unit: 'mg/dL' },
-  inr: { min: 0.5, max: 10, unit: '' },
-  sbp: { min: 60, max: 250, unit: 'mmHg' },
-  dbp: { min: 30, max: 150, unit: 'mmHg' },
-  pao2: { min: 30, max: 600, unit: 'mmHg' },
-  o2Flow: { min: 0, max: 5, unit: 'L/min' },
-  pfRatio: { min: 50, max: 600, unit: '' }
+import { VALIDATION_RANGES } from '../constants';
+
+// 유틸리티: 값이 비어있는지 확인
+const isEmpty = (value) => value === null || value === undefined || value === '';
+
+// 유틸리티: 안전한 숫자 변환
+const safeParseFloat = (value) => {
+  if (isEmpty(value)) return null;
+  const num = parseFloat(value);
+  return isNaN(num) ? null : num;
 };
 
+/**
+ * 단일 필드 값 검증
+ * @param {string} field - 필드명
+ * @param {any} value - 검증할 값
+ * @returns {{ valid: boolean, value?: number, error?: string }}
+ */
 export function validateValue(field, value) {
-  if (value === null || value === undefined || value === '') {
+  if (isEmpty(value)) {
     return { valid: false, error: '값을 입력해주세요' };
   }
 
-  const numValue = parseFloat(value);
-
-  if (isNaN(numValue)) {
+  const numValue = safeParseFloat(value);
+  if (numValue === null) {
     return { valid: false, error: '숫자를 입력해주세요' };
   }
 
@@ -37,125 +46,174 @@ export function validateValue(field, value) {
   return { valid: true, value: numValue };
 }
 
+/**
+ * P/F Ratio 계산
+ * @param {number} pao2 - PaO2 (mmHg)
+ * @param {number} fio2 - FiO2 (% 또는 소수)
+ * @returns {number|null}
+ */
 export function calculatePFRatio(pao2, fio2) {
-  if (!pao2 || !fio2) return null;
+  const pao2Val = safeParseFloat(pao2);
+  const fio2Val = safeParseFloat(fio2);
 
-  const pao2Val = parseFloat(pao2);
-  const fio2Val = parseFloat(fio2);
+  if (pao2Val === null || fio2Val === null) return null;
 
-  if (isNaN(pao2Val) || isNaN(fio2Val)) return null;
-
-  // FiO2가 100 이하면 백분율로 간주, 1 이하면 소수점으로 간주
+  // FiO2가 1보다 크면 백분율로 간주
   const fio2Decimal = fio2Val > 1 ? fio2Val / 100 : fio2Val;
-
   if (fio2Decimal <= 0) return null;
 
   return Math.round(pao2Val / fio2Decimal);
 }
 
-// MAP 계산: MAP = (SBP + 2 * DBP) / 3
+/**
+ * MAP (평균동맥압) 계산
+ * 공식: MAP = (SBP + 2 * DBP) / 3
+ * @param {number} sbp - 수축기 혈압
+ * @param {number} dbp - 이완기 혈압
+ * @returns {number|null}
+ */
 export function calculateMAP(sbp, dbp) {
-  if (sbp === null || sbp === undefined || sbp === '') return null;
-  if (dbp === null || dbp === undefined || dbp === '') return null;
+  const sbpVal = safeParseFloat(sbp);
+  const dbpVal = safeParseFloat(dbp);
 
-  const sbpVal = parseFloat(sbp);
-  const dbpVal = parseFloat(dbp);
-
-  if (isNaN(sbpVal) || isNaN(dbpVal)) return null;
+  if (sbpVal === null || dbpVal === null) return null;
 
   return Math.round((sbpVal + 2 * dbpVal) / 3);
 }
 
-// FiO2 계산: FiO2 = 21 + (4 * L/min) [nasal prong 기준]
+/**
+ * FiO2 계산 (Nasal Prong 기준)
+ * 공식: FiO2 = 21 + (4 * L/min)
+ * @param {number} o2FlowLpm - 산소 유량 (L/min)
+ * @returns {number|null}
+ */
 export function calculateFiO2FromFlow(o2FlowLpm) {
-  if (o2FlowLpm === null || o2FlowLpm === undefined || o2FlowLpm === '') return null;
-
-  const flowVal = parseFloat(o2FlowLpm);
-
-  if (isNaN(flowVal)) return null;
+  const flowVal = safeParseFloat(o2FlowLpm);
+  if (flowVal === null) return null;
 
   return 21 + (4 * flowVal);
 }
 
+/**
+ * SpO2에서 PaO2 추정 (Severinghaus 공식 역산)
+ * 공식: PaO2 = 11.2 * ln(SpO2 / (100 - SpO2)) + 26.6
+ * @param {number} spo2 - 산소포화도 (%)
+ * @returns {number|null}
+ */
+export function estimatePaO2FromSpO2(spo2) {
+  const spo2Val = safeParseFloat(spo2);
+  if (spo2Val === null || spo2Val < 70 || spo2Val >= 100) return null;
+
+  const ratio = spo2Val / (100 - spo2Val);
+  const estimatedPaO2 = 11.2 * Math.log(ratio) + 26.6;
+
+  // 결과를 합리적인 범위로 제한 (30-150 mmHg)
+  return Math.round(Math.max(30, Math.min(150, estimatedPaO2)));
+}
+
+/**
+ * SpO2 사용 시 경고 레벨 반환
+ * @param {number} spo2 - 산소포화도 (%)
+ * @returns {{ level: string, message: string }}
+ */
+export function getSpO2Warning(spo2) {
+  const spo2Val = safeParseFloat(spo2);
+
+  if (spo2Val === null) {
+    return { level: 'none', message: '' };
+  }
+
+  if (spo2Val > 97) {
+    return {
+      level: 'warning',
+      message: 'SpO2 > 97%: PaO2 추정이 매우 부정확합니다. 가능하면 동맥혈 가스 분석을 권장합니다.'
+    };
+  }
+
+  if (spo2Val > 94) {
+    return {
+      level: 'caution',
+      message: 'SpO2 94-97%: PaO2 추정치의 정확도가 제한됩니다.'
+    };
+  }
+
+  return { level: 'none', message: '' };
+}
+
+// 검증할 필드 목록 정의
+const REQUIRED_FIELDS = ['bilirubin', 'creatinine', 'inr', 'sbp', 'dbp', 'o2Flow'];
+
+/**
+ * 단일 필드 검증 및 결과 저장 헬퍼
+ */
+function validateField(field, value, errors, validatedInputs) {
+  const result = validateValue(field, value);
+  if (!result.valid) {
+    errors[field] = result.error;
+  } else {
+    validatedInputs[field] = result.value;
+  }
+  return result.valid;
+}
+
+/**
+ * 전체 입력값 검증
+ * @param {Object} inputs - 입력값 객체
+ * @returns {{ isValid: boolean, errors: Object, validatedInputs: Object }}
+ */
 export function validateAllInputs(inputs) {
   const errors = {};
   const validatedInputs = {};
 
-  // Bilirubin 검증
-  const bilResult = validateValue('bilirubin', inputs.bilirubin);
-  if (!bilResult.valid) {
-    errors.bilirubin = bilResult.error;
-  } else {
-    validatedInputs.bilirubin = bilResult.value;
-  }
-
-  // Creatinine 검증
-  const crResult = validateValue('creatinine', inputs.creatinine);
-  if (!crResult.valid) {
-    errors.creatinine = crResult.error;
-  } else {
-    validatedInputs.creatinine = crResult.value;
-  }
-
-  // INR 검증
-  const inrResult = validateValue('inr', inputs.inr);
-  if (!inrResult.valid) {
-    errors.inr = inrResult.error;
-  } else {
-    validatedInputs.inr = inrResult.value;
-  }
-
-  // SBP 검증
-  const sbpResult = validateValue('sbp', inputs.sbp);
-  if (!sbpResult.valid) {
-    errors.sbp = sbpResult.error;
-  } else {
-    validatedInputs.sbp = sbpResult.value;
-  }
-
-  // DBP 검증
-  const dbpResult = validateValue('dbp', inputs.dbp);
-  if (!dbpResult.valid) {
-    errors.dbp = dbpResult.error;
-  } else {
-    validatedInputs.dbp = dbpResult.value;
-  }
+  // 기본 필드들 검증
+  REQUIRED_FIELDS.forEach(field => {
+    validateField(field, inputs[field], errors, validatedInputs);
+  });
 
   // MAP 계산 (SBP, DBP가 모두 유효할 때)
   if (validatedInputs.sbp && validatedInputs.dbp) {
     validatedInputs.map = calculateMAP(validatedInputs.sbp, validatedInputs.dbp);
   }
 
-  // PaO2 검증
-  const pao2Result = validateValue('pao2', inputs.pao2);
-  if (!pao2Result.valid) {
-    errors.pao2 = pao2Result.error;
+  // SpO2 모드 플래그
+  validatedInputs.useSpO2 = Boolean(inputs.useSpO2);
+
+  // PaO2 또는 SpO2 검증 (모드에 따라)
+  if (inputs.useSpO2) {
+    const spo2Result = validateValue('spo2', inputs.spo2);
+    if (!spo2Result.valid) {
+      errors.spo2 = spo2Result.error;
+    } else {
+      validatedInputs.spo2 = spo2Result.value;
+      const estimatedPaO2 = estimatePaO2FromSpO2(spo2Result.value);
+      if (estimatedPaO2) {
+        validatedInputs.pao2 = estimatedPaO2;
+        validatedInputs.pao2Source = 'estimated';
+      } else {
+        errors.spo2 = 'SpO2 값으로 PaO2를 추정할 수 없습니다 (70-99% 범위 필요)';
+      }
+    }
   } else {
-    validatedInputs.pao2 = pao2Result.value;
+    const pao2Result = validateValue('pao2', inputs.pao2);
+    if (!pao2Result.valid) {
+      errors.pao2 = pao2Result.error;
+    } else {
+      validatedInputs.pao2 = pao2Result.value;
+      validatedInputs.pao2Source = 'measured';
+    }
   }
 
-  // O2 Flow 검증
-  const o2FlowResult = validateValue('o2Flow', inputs.o2Flow);
-  if (!o2FlowResult.valid) {
-    errors.o2Flow = o2FlowResult.error;
-  } else {
-    validatedInputs.o2Flow = o2FlowResult.value;
-  }
-
-  // FiO2 계산 (O2 Flow가 유효할 때)
+  // FiO2 계산
   if (validatedInputs.o2Flow !== undefined) {
     validatedInputs.fio2 = calculateFiO2FromFlow(validatedInputs.o2Flow);
   }
 
   // P/F ratio 계산
   if (validatedInputs.pao2 && validatedInputs.fio2) {
-    validatedInputs.pfRatio = calculatePFRatio(
-      validatedInputs.pao2,
-      validatedInputs.fio2
-    );
+    validatedInputs.pfRatio = calculatePFRatio(validatedInputs.pao2, validatedInputs.fio2);
   }
 
-  // 토글 값들 (boolean)
+  // 토글 값들
   validatedInputs.rrt = Boolean(inputs.rrt);
   validatedInputs.vasopressors = Boolean(inputs.vasopressors);
   validatedInputs.heGrade = inputs.heGrade || 0;
@@ -166,3 +224,6 @@ export function validateAllInputs(inputs) {
     validatedInputs
   };
 }
+
+// VALIDATION_RANGES를 re-export (하위 호환성 유지)
+export { VALIDATION_RANGES };

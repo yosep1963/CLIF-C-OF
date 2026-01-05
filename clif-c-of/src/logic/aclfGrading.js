@@ -1,150 +1,161 @@
-// ACLF 등급 판정 로직
+/**
+ * ACLF (Acute-on-Chronic Liver Failure) 등급 판정 로직
+ *
+ * ACLF-3: 장기부전 3개 이상
+ * ACLF-2: 장기부전 2개
+ * ACLF-1:
+ *   - 신부전 단독
+ *   - 기타 장기부전 1개 + 경미한 신기능장애 (Cr 1.5-1.9)
+ *   - 기타 장기부전 1개 + 경도 간성뇌증 (HE 1-2)
+ *   - 중등도 신기능장애 (Cr 2.0-3.4) 단독
+ * No ACLF: 위 기준 미충족
+ */
 
-export const ACLF_GRADES = {
-  NO_ACLF: 'No ACLF',
-  ACLF_1: 'ACLF-1',
-  ACLF_2: 'ACLF-2',
-  ACLF_3: 'ACLF-3'
-};
+import {
+  ACLF_GRADES,
+  MORTALITY_INFO,
+  SEVERITY_COLORS,
+  KIDNEY_STATUS,
+  ORGAN_NAMES
+} from '../constants';
 
-export const MORTALITY_RATES = {
-  'No ACLF': { rate: '< 5%', severity: 'low' },
-  'ACLF-1': { rate: '22-25%', severity: 'medium' },
-  'ACLF-2': { rate: '32-35%', severity: 'high' },
-  'ACLF-3': { rate: '> 75%', severity: 'critical' }
-};
-
-// ACLF-1 조건 체크를 위한 신장 상태 확인
+// 신장 상태 확인 함수
 function checkKidneyCondition(creatinine, rrt) {
   if (rrt || creatinine >= 3.5) {
-    return 'kidney_failure'; // 신부전 (3점)
+    return KIDNEY_STATUS.FAILURE;
   }
   if (creatinine >= 2.0 && creatinine < 3.5) {
-    return 'kidney_dysfunction_moderate'; // 중등도 신기능장애 (2점)
+    return KIDNEY_STATUS.MODERATE_DYSFUNCTION;
   }
   if (creatinine >= 1.5 && creatinine < 2.0) {
-    return 'kidney_dysfunction_mild'; // 경미한 신기능장애
+    return KIDNEY_STATUS.MILD_DYSFUNCTION;
   }
-  return 'kidney_normal';
+  return KIDNEY_STATUS.NORMAL;
 }
 
-// ACLF 등급 판정
+// 유틸리티 함수
+const capitalizeFirst = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+const getOrganNameKr = (organ) => ORGAN_NAMES[organ]?.kr || organ;
+
+/**
+ * ACLF 등급 판정
+ * @param {Object} scores - 장기별 점수 및 부전 정보
+ * @param {Object} inputs - 환자 입력 데이터
+ * @returns {Object} ACLF 판정 결과
+ */
 export function determineACLFGrade(scores, inputs) {
   const { organFailures, organFailureCount } = scores;
   const { creatinine, rrt, heGrade } = inputs;
 
-  // 결과 객체 초기화
   const result = {
     grade: ACLF_GRADES.NO_ACLF,
     rationale: '',
     rationaleKr: '',
-    organFailures: organFailures,
-    organFailureCount: organFailureCount
+    organFailures,
+    organFailureCount
   };
 
-  // 1. ACLF-3: 장기부전 3개 이상
+  // ACLF-3: 장기부전 3개 이상
   if (organFailureCount >= 3) {
-    result.grade = ACLF_GRADES.ACLF_3;
-    result.rationale = `${organFailureCount} organ failures`;
-    result.rationaleKr = `장기부전 ${organFailureCount}개`;
-    return result;
+    return {
+      ...result,
+      grade: ACLF_GRADES.ACLF_3,
+      rationale: `${organFailureCount} organ failures`,
+      rationaleKr: `장기부전 ${organFailureCount}개`
+    };
   }
 
-  // 2. ACLF-2: 장기부전 2개
+  // ACLF-2: 장기부전 2개
   if (organFailureCount === 2) {
-    result.grade = ACLF_GRADES.ACLF_2;
-    result.rationale = '2 organ failures';
-    result.rationaleKr = '장기부전 2개';
-    return result;
+    return {
+      ...result,
+      grade: ACLF_GRADES.ACLF_2,
+      rationale: '2 organ failures',
+      rationaleKr: '장기부전 2개'
+    };
   }
 
-  // 3. ACLF-1 조건들 (장기부전 1개 또는 특정 조건)
+  // ACLF-1 조건들 (장기부전 1개)
   if (organFailureCount === 1) {
     const failedOrgan = organFailures[0];
     const kidneyCondition = checkKidneyCondition(creatinine, rrt);
 
-    // 3a. 신부전 단독
+    // 신부전 단독
     if (failedOrgan === 'kidney') {
-      result.grade = ACLF_GRADES.ACLF_1;
-      result.rationale = 'Single kidney failure';
-      result.rationaleKr = '단독 신부전';
-      return result;
+      return {
+        ...result,
+        grade: ACLF_GRADES.ACLF_1,
+        rationale: 'Single kidney failure',
+        rationaleKr: '단독 신부전'
+      };
     }
 
-    // 3b. 기타 장기부전 1개 + 경미한 신기능장애 (Cr 1.5-1.9)
-    if (kidneyCondition === 'kidney_dysfunction_mild') {
-      result.grade = ACLF_GRADES.ACLF_1;
-      result.rationale = `${capitalizeFirst(failedOrgan)} failure + mild kidney dysfunction (Cr 1.5-1.9)`;
-      result.rationaleKr = `${getOrganNameKr(failedOrgan)} 부전 + 경미한 신기능장애`;
-      return result;
+    // 기타 장기부전 + 경미한 신기능장애
+    if (kidneyCondition === KIDNEY_STATUS.MILD_DYSFUNCTION) {
+      return {
+        ...result,
+        grade: ACLF_GRADES.ACLF_1,
+        rationale: `${capitalizeFirst(failedOrgan)} failure + mild kidney dysfunction (Cr 1.5-1.9)`,
+        rationaleKr: `${getOrganNameKr(failedOrgan)} 부전 + 경미한 신기능장애`
+      };
     }
 
-    // 3c. 기타 장기부전 1개 + 경도 간성뇌증 (HE 1-2)
+    // 기타 장기부전 + 경도 간성뇌증
     if (heGrade === 1 && failedOrgan !== 'brain') {
-      result.grade = ACLF_GRADES.ACLF_1;
-      result.rationale = `${capitalizeFirst(failedOrgan)} failure + mild hepatic encephalopathy (HE 1-2)`;
-      result.rationaleKr = `${getOrganNameKr(failedOrgan)} 부전 + 경도 간성뇌증`;
-      return result;
+      return {
+        ...result,
+        grade: ACLF_GRADES.ACLF_1,
+        rationale: `${capitalizeFirst(failedOrgan)} failure + mild hepatic encephalopathy (HE 1-2)`,
+        rationaleKr: `${getOrganNameKr(failedOrgan)} 부전 + 경도 간성뇌증`
+      };
     }
 
-    // 기타 단독 장기부전 (ACLF-1로 분류되지 않음)
-    result.grade = ACLF_GRADES.NO_ACLF;
-    result.rationale = `Single ${failedOrgan} failure without additional criteria`;
-    result.rationaleKr = `단독 ${getOrganNameKr(failedOrgan)} 부전 (추가 조건 미충족)`;
-    return result;
+    // 기타 단독 장기부전 (ACLF-1 미충족)
+    return {
+      ...result,
+      grade: ACLF_GRADES.NO_ACLF,
+      rationale: `Single ${failedOrgan} failure without additional criteria`,
+      rationaleKr: `단독 ${getOrganNameKr(failedOrgan)} 부전 (추가 조건 미충족)`
+    };
   }
 
-  // 4. 장기부전 없음, 단독 신장 2점 (Cr 2.0-3.4) 체크
+  // 장기부전 없음, 중등도 신기능장애 체크
   const kidneyCondition = checkKidneyCondition(creatinine, rrt);
-  if (kidneyCondition === 'kidney_dysfunction_moderate') {
-    result.grade = ACLF_GRADES.ACLF_1;
-    result.rationale = 'Moderate kidney dysfunction (Cr 2.0-3.4)';
-    result.rationaleKr = '중등도 신기능장애 (Cr 2.0-3.4)';
-    return result;
+  if (kidneyCondition === KIDNEY_STATUS.MODERATE_DYSFUNCTION) {
+    return {
+      ...result,
+      grade: ACLF_GRADES.ACLF_1,
+      rationale: 'Moderate kidney dysfunction (Cr 2.0-3.4)',
+      rationaleKr: '중등도 신기능장애 (Cr 2.0-3.4)'
+    };
   }
 
-  // 5. No ACLF
-  result.grade = ACLF_GRADES.NO_ACLF;
-  result.rationale = 'No organ failure criteria met';
-  result.rationaleKr = '장기부전 기준 미충족';
-  return result;
-}
-
-// 28일 사망률 및 위험도 반환
-export function getMortalityInfo(grade) {
-  return MORTALITY_RATES[grade] || MORTALITY_RATES['No ACLF'];
-}
-
-// 위험도 색상 반환
-export function getSeverityColor(severity) {
-  switch (severity) {
-    case 'low':
-      return '#10B981'; // 초록
-    case 'medium':
-      return '#F59E0B'; // 노랑
-    case 'high':
-      return '#EF4444'; // 빨강
-    case 'critical':
-      return '#DC2626'; // 진한 빨강
-    default:
-      return '#6B7280'; // 회색
-  }
-}
-
-// 유틸리티 함수
-function capitalizeFirst(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function getOrganNameKr(organ) {
-  const names = {
-    liver: '간',
-    kidney: '신장',
-    brain: '뇌',
-    coagulation: '응고',
-    circulation: '순환',
-    respiratory: '호흡'
+  // No ACLF
+  return {
+    ...result,
+    grade: ACLF_GRADES.NO_ACLF,
+    rationale: 'No organ failure criteria met',
+    rationaleKr: '장기부전 기준 미충족'
   };
-  return names[organ] || organ;
 }
 
+/**
+ * 28일 사망률 및 위험도 반환
+ * @param {string} grade - ACLF 등급
+ * @returns {{ rate: string, severity: string }}
+ */
+export function getMortalityInfo(grade) {
+  return MORTALITY_INFO[grade] || MORTALITY_INFO[ACLF_GRADES.NO_ACLF];
+}
+
+/**
+ * 위험도에 따른 색상 반환
+ * @param {string} severity - 위험도 레벨
+ * @returns {string} 색상 코드
+ */
+export function getSeverityColor(severity) {
+  return SEVERITY_COLORS[severity] || '#6B7280';
+}
+
+// 상수 re-export (하위 호환성)
+export { ACLF_GRADES };

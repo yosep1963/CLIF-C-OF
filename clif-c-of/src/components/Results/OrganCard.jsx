@@ -1,5 +1,11 @@
-import React from 'react';
+import React, { memo } from 'react';
 import './Results.css';
+
+const COLOR_CLASS_MAP = {
+  green: 'status-normal',
+  yellow: 'status-warning',
+  red: 'status-failure'
+};
 
 function OrganCard({ organ }) {
   const {
@@ -13,21 +19,10 @@ function OrganCard({ organ }) {
     isFailure
   } = organ;
 
-  const getColorClass = () => {
-    switch (color) {
-      case 'green':
-        return 'status-normal';
-      case 'yellow':
-        return 'status-warning';
-      case 'red':
-        return 'status-failure';
-      default:
-        return 'status-unknown';
-    }
-  };
+  const colorClass = COLOR_CLASS_MAP[color] || 'status-unknown';
 
   return (
-    <div className={`organ-card ${getColorClass()} ${isFailure ? 'is-failure' : ''}`}>
+    <div className={`organ-card ${colorClass} ${isFailure ? 'is-failure' : ''}`}>
       <div className="organ-card-header">
         <span className="organ-card-name">{name}</span>
         {isFailure && <span className="failure-badge">부전</span>}
@@ -46,7 +41,7 @@ function OrganCard({ organ }) {
         </div>
       </div>
       <div className="organ-card-footer">
-        <span className={`score-badge ${getColorClass()}`}>
+        <span className={`score-badge ${colorClass}`}>
           {score !== null ? `${score}점` : '-'}
         </span>
         <span className="status-text">{statusText}</span>
@@ -55,4 +50,4 @@ function OrganCard({ organ }) {
   );
 }
 
-export default OrganCard;
+export default memo(OrganCard);

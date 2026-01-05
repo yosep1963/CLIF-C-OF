@@ -1,14 +1,15 @@
-// 장기별 점수 계산 로직 (CLIF-C OF Score)
+/**
+ * 장기별 점수 계산 로직 (CLIF-C OF Score)
+ */
 
-export const ORGAN_NAMES = {
-  liver: '간 (Liver)',
-  kidney: '신장 (Kidney)',
-  brain: '뇌 (Brain)',
-  coagulation: '응고 (Coagulation)',
-  circulation: '순환 (Circulation)',
-  respiratory: '호흡 (Respiratory)'
-};
+import { ORGAN_NAMES as ORGAN_BASE, SCORE_LABELS, SCORE_COLORS } from '../constants';
 
+// 장기 표시 이름 (ORGAN_BASE에서 파생)
+export const ORGAN_NAMES = Object.fromEntries(
+  Object.entries(ORGAN_BASE).map(([key, val]) => [key, `${val.kr} (${val.en})`])
+);
+
+// 장기별 지표
 export const ORGAN_INDICATORS = {
   liver: 'Bilirubin',
   kidney: 'Creatinine',
@@ -18,77 +19,84 @@ export const ORGAN_INDICATORS = {
   respiratory: 'PaO₂/FiO₂'
 };
 
-// 간: Bilirubin 기준
-export function scoreLiver(bilirubin) {
-  if (bilirubin === null || bilirubin === undefined) return null;
+// HE 등급 라벨
+const HE_LABELS = ['Grade 0', 'Grade 1-2', 'Grade 3-4'];
+
+// 점수 계산 함수들
+export const scoreLiver = (bilirubin) => {
+  if (bilirubin == null) return null;
   if (bilirubin < 6) return 1;
   if (bilirubin < 12) return 2;
-  return 3; // >= 12
-}
+  return 3;
+};
 
-// 신장: Creatinine 기준 (RRT 포함)
-export function scoreKidney(creatinine, rrt = false) {
-  if (rrt) return 3; // RRT 사용 시 자동 3점
-  if (creatinine === null || creatinine === undefined) return null;
+export const scoreKidney = (creatinine, rrt = false) => {
+  if (rrt) return 3;
+  if (creatinine == null) return null;
   if (creatinine < 2) return 1;
   if (creatinine < 3.5) return 2;
-  return 3; // >= 3.5
-}
+  return 3;
+};
 
-// 뇌: HE Grade 기준 (West-Haven)
-// heGrade: 0 = Grade 0, 1 = Grade 1-2, 2 = Grade 3-4
-export function scoreBrain(heGrade) {
-  if (heGrade === null || heGrade === undefined) return null;
+export const scoreBrain = (heGrade) => {
+  if (heGrade == null) return null;
   if (heGrade === 0) return 1;
-  if (heGrade === 1) return 2; // Grade 1-2
-  return 3; // Grade 3-4
-}
+  if (heGrade === 1) return 2;
+  return 3;
+};
 
-// 응고: INR 기준
-export function scoreCoagulation(inr) {
-  if (inr === null || inr === undefined) return null;
+export const scoreCoagulation = (inr) => {
+  if (inr == null) return null;
   if (inr < 2.0) return 1;
   if (inr < 2.5) return 2;
-  return 3; // >= 2.5
-}
+  return 3;
+};
 
-// 순환: MAP 기준 (승압제 포함)
-export function scoreCirculation(map, vasopressors = false) {
-  if (vasopressors) return 3; // 승압제 사용 시 자동 3점
-  if (map === null || map === undefined) return null;
+export const scoreCirculation = (map, vasopressors = false) => {
+  if (vasopressors) return 3;
+  if (map == null) return null;
   if (map >= 70) return 1;
-  return 2; // < 70
-}
+  return 2;
+};
 
-// 호흡: PaO2/FiO2 기준
-export function scoreRespiratory(pfRatio) {
-  if (pfRatio === null || pfRatio === undefined) return null;
+export const scoreRespiratory = (pfRatio) => {
+  if (pfRatio == null) return null;
   if (pfRatio > 300) return 1;
-  if (pfRatio > 200) return 2; // 201-300
-  return 3; // <= 200
-}
+  if (pfRatio > 200) return 2;
+  return 3;
+};
 
-// 모든 장기 점수 계산
+// 점수 계산 함수 매핑
+const SCORE_FUNCTIONS = {
+  liver: (inputs) => scoreLiver(inputs.bilirubin),
+  kidney: (inputs) => scoreKidney(inputs.creatinine, inputs.rrt),
+  brain: (inputs) => scoreBrain(inputs.heGrade),
+  coagulation: (inputs) => scoreCoagulation(inputs.inr),
+  circulation: (inputs) => scoreCirculation(inputs.map, inputs.vasopressors),
+  respiratory: (inputs) => scoreRespiratory(inputs.pfRatio)
+};
+
+/**
+ * 모든 장기 점수 계산
+ * @param {Object} inputs - 입력값 객체
+ * @returns {Object} 점수 및 부전 정보
+ */
 export function calculateAllScores(inputs) {
-  const { bilirubin, creatinine, rrt, heGrade, inr, map, vasopressors, pfRatio } = inputs;
+  const scores = {};
 
-  const scores = {
-    liver: scoreLiver(bilirubin),
-    kidney: scoreKidney(creatinine, rrt),
-    brain: scoreBrain(heGrade),
-    coagulation: scoreCoagulation(inr),
-    circulation: scoreCirculation(map, vasopressors),
-    respiratory: scoreRespiratory(pfRatio)
-  };
+  // 각 장기 점수 계산
+  Object.keys(SCORE_FUNCTIONS).forEach((organ) => {
+    scores[organ] = SCORE_FUNCTIONS[organ](inputs);
+  });
 
-  // 총점 계산 (null인 항목 제외)
-  const validScores = Object.values(scores).filter(s => s !== null);
+  // 총점 계산
+  const validScores = Object.values(scores).filter((s) => s !== null);
   const totalScore = validScores.reduce((sum, s) => sum + s, 0);
 
-  // 장기부전(3점) 개수
+  // 장기부전(3점) 목록
   const organFailures = Object.entries(scores)
-    .filter(([_, score]) => score === 3)
-    .map(([organ, _]) => organ);
+    .filter(([, score]) => score === 3)
+    .map(([organ]) => organ);
 
   return {
     scores,
@@ -98,65 +106,55 @@ export function calculateAllScores(inputs) {
   };
 }
 
-// 점수에 따른 상태 텍스트
+/**
+ * 점수에 따른 상태 정보 반환
+ * @param {number|null} score - 점수
+ * @returns {{ status: string, text: string, color: string }}
+ */
 export function getScoreStatus(score) {
-  if (score === null) return { status: 'unknown', text: '미입력', color: 'gray' };
-  if (score === 1) return { status: 'normal', text: '정상', color: 'green' };
-  if (score === 2) return { status: 'warning', text: '주의', color: 'yellow' };
-  return { status: 'failure', text: '부전', color: 'red' };
+  if (score === null) {
+    return { status: 'unknown', text: '미입력', color: 'gray' };
+  }
+  const colorMap = { 1: 'green', 2: 'yellow', 3: 'red' };
+  const textMap = { 1: '정상', 2: '주의', 3: '부전' };
+  const statusMap = { 1: 'normal', 2: 'warning', 3: 'failure' };
+
+  return {
+    status: statusMap[score] || 'unknown',
+    text: textMap[score] || '-',
+    color: colorMap[score] || 'gray'
+  };
 }
 
-// 장기별 상세 정보 반환
+// 장기별 값 추출 함수
+const VALUE_EXTRACTORS = {
+  liver: (inputs) => ({ value: inputs.bilirubin, unit: 'mg/dL' }),
+  kidney: (inputs) => inputs.rrt
+    ? { value: 'RRT', unit: '' }
+    : { value: inputs.creatinine, unit: 'mg/dL' },
+  brain: (inputs) => ({ value: HE_LABELS[inputs.heGrade] || 'Grade 0', unit: '' }),
+  coagulation: (inputs) => ({ value: inputs.inr, unit: '' }),
+  circulation: (inputs) => inputs.vasopressors
+    ? { value: '승압제 사용', unit: '' }
+    : { value: inputs.map, unit: 'mmHg' },
+  respiratory: (inputs) => ({ value: inputs.pfRatio, unit: '' })
+};
+
+/**
+ * 장기별 상세 정보 반환
+ * @param {string} organ - 장기 키
+ * @param {number|null} score - 점수
+ * @param {Object} inputs - 입력값
+ * @returns {Object} 장기 상세 정보
+ */
 export function getOrganDetails(organ, score, inputs) {
-  const name = ORGAN_NAMES[organ];
-  const indicator = ORGAN_INDICATORS[organ];
   const { status, text, color } = getScoreStatus(score);
-
-  let value = '';
-  let unit = '';
-
-  switch (organ) {
-    case 'liver':
-      value = inputs.bilirubin;
-      unit = 'mg/dL';
-      break;
-    case 'kidney':
-      if (inputs.rrt) {
-        value = 'RRT';
-        unit = '';
-      } else {
-        value = inputs.creatinine;
-        unit = 'mg/dL';
-      }
-      break;
-    case 'brain':
-      const heLabels = ['Grade 0', 'Grade 1-2', 'Grade 3-4'];
-      value = heLabels[inputs.heGrade] || 'Grade 0';
-      unit = '';
-      break;
-    case 'coagulation':
-      value = inputs.inr;
-      unit = '';
-      break;
-    case 'circulation':
-      if (inputs.vasopressors) {
-        value = '승압제 사용';
-        unit = '';
-      } else {
-        value = inputs.map;
-        unit = 'mmHg';
-      }
-      break;
-    case 'respiratory':
-      value = inputs.pfRatio;
-      unit = '';
-      break;
-  }
+  const { value, unit } = VALUE_EXTRACTORS[organ]?.(inputs) || { value: '', unit: '' };
 
   return {
     organ,
-    name,
-    indicator,
+    name: ORGAN_NAMES[organ],
+    indicator: ORGAN_INDICATORS[organ],
     score,
     status,
     statusText: text,

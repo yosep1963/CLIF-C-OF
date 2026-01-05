@@ -1,48 +1,22 @@
-import React from 'react';
+import React, { memo } from 'react';
+import { SEVERITY_INFO, SEVERITY_LEVELS } from '../../constants';
 import './Results.css';
 
+const SEVERITY_LABELS = {
+  [SEVERITY_LEVELS.LOW]: '저위험',
+  [SEVERITY_LEVELS.MODERATE]: '중위험',
+  [SEVERITY_LEVELS.HIGH]: '고위험',
+  [SEVERITY_LEVELS.CRITICAL]: '초고위험'
+};
+
 function SeverityIndicator({ severity, mortality }) {
-  const getSeverityInfo = () => {
-    switch (severity) {
-      case 'low':
-        return {
-          label: '저위험',
-          color: '#10B981',
-          bgColor: '#D1FAE5',
-          icon: '✓'
-        };
-      case 'medium':
-        return {
-          label: '중위험',
-          color: '#F59E0B',
-          bgColor: '#FEF3C7',
-          icon: '⚠'
-        };
-      case 'high':
-        return {
-          label: '고위험',
-          color: '#EF4444',
-          bgColor: '#FEE2E2',
-          icon: '⚠'
-        };
-      case 'critical':
-        return {
-          label: '초고위험',
-          color: '#DC2626',
-          bgColor: '#FEE2E2',
-          icon: '⛔'
-        };
-      default:
-        return {
-          label: '-',
-          color: '#6B7280',
-          bgColor: '#F3F4F6',
-          icon: '-'
-        };
-    }
+  const info = SEVERITY_INFO[severity] || {
+    color: '#6B7280',
+    bgColor: '#F3F4F6',
+    icon: '-'
   };
 
-  const info = getSeverityInfo();
+  const label = SEVERITY_LABELS[severity] || '-';
 
   return (
     <div
@@ -54,7 +28,7 @@ function SeverityIndicator({ severity, mortality }) {
       </div>
       <div className="severity-content">
         <span className="severity-label" style={{ color: info.color }}>
-          {info.label}
+          {label}
         </span>
         <span className="mortality-rate">
           28일 사망률: <strong>{mortality}</strong>
@@ -64,4 +38,4 @@ function SeverityIndicator({ severity, mortality }) {
   );
 }
 
-export default SeverityIndicator;
+export default memo(SeverityIndicator);
