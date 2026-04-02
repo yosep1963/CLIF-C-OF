@@ -88,7 +88,7 @@ export const VALIDATION_RANGES = {
   dbp: { min: 30, max: 150, unit: 'mmHg' },
   pao2: { min: 30, max: 600, unit: 'mmHg' },
   spo2: { min: 70, max: 100, unit: '%' },
-  o2Flow: { min: 0, max: 5, unit: 'L/min' },
+  o2Flow: { min: 0, max: 6, unit: 'L/min' },
   pfRatio: { min: 50, max: 600, unit: '' }
 };
 

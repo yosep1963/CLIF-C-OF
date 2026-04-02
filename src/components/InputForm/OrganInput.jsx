@@ -221,7 +221,7 @@ function OrganInput({ inputs, errors, onChange }) {
             value={inputs.o2Flow}
             onChange={(val) => handleChange('o2Flow', val)}
             unit="L/min"
-            placeholder="0 - 5"
+            placeholder="0 - 6"
             error={errors?.o2Flow}
             min={VALIDATION_RANGES.o2Flow.min}
             max={VALIDATION_RANGES.o2Flow.max}
