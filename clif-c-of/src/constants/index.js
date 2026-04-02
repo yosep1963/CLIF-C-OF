@@ -79,20 +79,6 @@ export const ORGAN_NAMES = {
   respiratory: { en: 'Respiratory', kr: '호흡', icon: '🫁' }
 };
 
-// 점수 레벨 색상
-export const SCORE_COLORS = {
-  1: '#10B981', // 정상 (녹색)
-  2: '#F59E0B', // 주의 (노란색)
-  3: '#EF4444'  // 부전 (빨간색)
-};
-
-// 점수 레벨 라벨
-export const SCORE_LABELS = {
-  1: '정상',
-  2: '주의',
-  3: '부전'
-};
-
 // 입력값 유효성 범위
 export const VALIDATION_RANGES = {
   bilirubin: { min: 0.1, max: 50, unit: 'mg/dL' },
@@ -137,13 +123,3 @@ export const INITIAL_INPUTS = {
   spo2: ''
 };
 
-// 날짜 포맷 함수
-export const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}`;
-};

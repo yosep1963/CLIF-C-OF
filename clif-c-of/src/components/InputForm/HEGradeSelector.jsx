@@ -1,11 +1,6 @@
 import React from 'react';
+import { HE_OPTIONS } from '../../constants';
 import './InputForm.css';
-
-const HE_OPTIONS = [
-  { value: 0, label: 'Grade 0', description: '정상' },
-  { value: 1, label: 'Grade 1-2', description: '경도' },
-  { value: 2, label: 'Grade 3-4', description: '중증' }
-];
 
 function HEGradeSelector({ value, onChange, disabled = false }) {
   return (

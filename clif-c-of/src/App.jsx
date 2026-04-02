@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { OrganInput } from './components/InputForm';
 import { DiagnosisResult } from './components/Results';
 import { DiagnosticHistory } from './components/History';

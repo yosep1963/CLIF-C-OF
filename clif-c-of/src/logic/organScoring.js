@@ -2,7 +2,7 @@
  * 장기별 점수 계산 로직 (CLIF-C OF Score)
  */
 
-import { ORGAN_NAMES as ORGAN_BASE, SCORE_LABELS, SCORE_COLORS } from '../constants';
+import { ORGAN_NAMES as ORGAN_BASE } from '../constants';
 
 // 장기 표시 이름 (ORGAN_BASE에서 파생)
 export const ORGAN_NAMES = Object.fromEntries(

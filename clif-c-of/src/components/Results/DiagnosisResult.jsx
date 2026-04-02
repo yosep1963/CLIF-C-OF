@@ -6,26 +6,25 @@ import { ORGAN_NAMES, GRADE_COLORS, ACLF_GRADES } from '../../constants';
 import './Results.css';
 
 function DiagnosisResult({ result, onSave }) {
+  // 장기 목록 메모이제이션 (Hook은 early return 전에 호출)
+  const organList = useMemo(() => {
+    if (!result) return [];
+    const { scores, inputs } = result;
+    return Object.keys(ORGAN_NAMES).map((organ) =>
+      getOrganDetails(organ, scores[organ], inputs)
+    );
+  }, [result]);
+
   if (!result) return null;
 
   const {
     grade,
     rationaleKr,
-    scores,
-    inputs,
     mortality,
     severity,
     organFailureCount,
     totalScore
   } = result;
-
-  // 장기 목록 메모이제이션
-  const organList = useMemo(() =>
-    Object.keys(ORGAN_NAMES).map((organ) =>
-      getOrganDetails(organ, scores[organ], inputs)
-    ),
-    [scores, inputs]
-  );
 
   const gradeColor = GRADE_COLORS[grade] || '#6B7280';
 

@@ -1,16 +1,8 @@
 import React, { memo, useCallback } from 'react';
-import { GRADE_COLORS, formatDate } from '../../constants';
+import { GRADE_COLORS } from '../../constants';
 import './History.css';
 
 function DiagnosticHistory({ history, onLoad, onRemove, onClear }) {
-  if (!history || history.length === 0) {
-    return (
-      <div className="history-empty">
-        <p>저장된 진단 기록이 없습니다.</p>
-      </div>
-    );
-  }
-
   const formatTimestamp = useCallback((timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('ko-KR', {
@@ -24,6 +16,14 @@ function DiagnosticHistory({ history, onLoad, onRemove, onClear }) {
   const getGradeColor = useCallback((grade) => {
     return GRADE_COLORS[grade] || '#6B7280';
   }, []);
+
+  if (!history || history.length === 0) {
+    return (
+      <div className="history-empty">
+        <p>저장된 진단 기록이 없습니다.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="diagnostic-history">
@@ -55,7 +55,9 @@ function DiagnosticHistory({ history, onLoad, onRemove, onClear }) {
               </div>
               <div className="history-item-right">
                 <span className="history-score">
-                  {item.totalScore}점 / {item.organFailureCount}개 부전
+                  {item.totalScore}점 / {item.organFailureCount > 0
+                    ? `${item.organFailureCount}개 부전`
+                    : '부전 없음'}
                 </span>
               </div>
             </button>

@@ -4,10 +4,9 @@
  * ACLF-3: 장기부전 3개 이상
  * ACLF-2: 장기부전 2개
  * ACLF-1:
- *   - 신부전 단독
- *   - 기타 장기부전 1개 + 경미한 신기능장애 (Cr 1.5-1.9)
+ *   - 신부전 단독 (Cr ≥3.5 또는 RRT)
+ *   - 기타 장기부전 1개 + 신기능장애 (Cr 2.0-3.4)
  *   - 기타 장기부전 1개 + 경도 간성뇌증 (HE 1-2)
- *   - 중등도 신기능장애 (Cr 2.0-3.4) 단독
  * No ACLF: 위 기준 미충족
  */
 
@@ -90,17 +89,19 @@ export function determineACLFGrade(scores, inputs) {
       };
     }
 
-    // 기타 장기부전 + 경미한 신기능장애
-    if (kidneyCondition === KIDNEY_STATUS.MILD_DYSFUNCTION) {
+    // 기타 장기부전 + 신기능장애 (Cr 2.0-3.4)
+    if (kidneyCondition === KIDNEY_STATUS.MODERATE_DYSFUNCTION) {
       return {
         ...result,
         grade: ACLF_GRADES.ACLF_1,
-        rationale: `${capitalizeFirst(failedOrgan)} failure + mild kidney dysfunction (Cr 1.5-1.9)`,
-        rationaleKr: `${getOrganNameKr(failedOrgan)} 부전 + 경미한 신기능장애`
+        rationale: `${capitalizeFirst(failedOrgan)} failure + kidney dysfunction (Cr 2.0-3.4)`,
+        rationaleKr: `${getOrganNameKr(failedOrgan)} 부전 + 신기능장애 (Cr 2.0-3.4)`
       };
     }
 
     // 기타 장기부전 + 경도 간성뇌증
+    // Note: failedOrgan !== 'brain' 조건은 논리적으로 항상 true
+    // (heGrade === 1이면 brain score = 2이므로 brain이 failedOrgan일 수 없음)
     if (heGrade === 1 && failedOrgan !== 'brain') {
       return {
         ...result,
@@ -116,17 +117,6 @@ export function determineACLFGrade(scores, inputs) {
       grade: ACLF_GRADES.NO_ACLF,
       rationale: `Single ${failedOrgan} failure without additional criteria`,
       rationaleKr: `단독 ${getOrganNameKr(failedOrgan)} 부전 (추가 조건 미충족)`
-    };
-  }
-
-  // 장기부전 없음, 중등도 신기능장애 체크
-  const kidneyCondition = checkKidneyCondition(creatinine, rrt);
-  if (kidneyCondition === KIDNEY_STATUS.MODERATE_DYSFUNCTION) {
-    return {
-      ...result,
-      grade: ACLF_GRADES.ACLF_1,
-      rationale: 'Moderate kidney dysfunction (Cr 2.0-3.4)',
-      rationaleKr: '중등도 신기능장애 (Cr 2.0-3.4)'
     };
   }
 
