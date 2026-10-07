@@ -273,29 +273,103 @@
   background: #1e40af;
 }
 
-/* Next Step Notice */
-.next-step-notice {
+.save-notice {
+  margin-top: 0.5rem;
   text-align: center;
-  padding: 1rem;
+  font-size: 0.875rem;
+  color: #15803d;
+}
+
+/* 이전 버전 이력을 현재 기준으로 다시 계산했을 때 */
+.recompute-note {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #92400e;
   background: #fffbeb;
   border: 1px solid #fcd34d;
   border-radius: 12px;
 }
 
-.next-step-notice p {
-  font-size: 0.875rem;
-  color: #92400e;
-  margin-bottom: 0.25rem;
+/* 재평가 안내 */
+.reassess-note {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
 }
 
-.next-step-notice small {
+/* 다음 단계 점수 (CLIF-C ACLF / CLIF-C AD) */
+.follow-up-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.follow-up-description {
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.follow-up-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+}
+
+.follow-up-result {
+  margin-top: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+.follow-up-score {
+  font-size: 1rem;
+  color: #374151;
+}
+
+.follow-up-score strong {
+  margin-left: 0.25rem;
+  font-size: 1.5rem;
+  color: #1f2937;
+}
+
+.follow-up-risk {
+  margin-left: 0.5rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.follow-up-mortality {
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.follow-up-note {
+  margin-top: 0.5rem;
   font-size: 0.75rem;
+  line-height: 1.4;
   color: #b45309;
 }
 
 /* Mobile Responsive */
 @media (max-width: 480px) {
   .organ-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .follow-up-inputs {
     grid-template-columns: 1fr;
   }
 

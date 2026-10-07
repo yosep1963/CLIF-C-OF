@@ -71,6 +71,15 @@ body {
   min-height: 100vh;
 }
 
+/* 버튼 기본값 (각 컴포넌트 클래스에서 모양을 정함) */
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
 /* App Container */
 .app-container {
   max-width: 480px;
@@ -188,6 +197,17 @@ body {
 .reset-button:hover {
   background: var(--color-background);
   color: var(--color-text);
+}
+
+/* Footer (버전, 면책 문구) */
+.app-footer {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-md) 0 var(--spacing-lg);
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
 }
 
 /* Scrollbar */

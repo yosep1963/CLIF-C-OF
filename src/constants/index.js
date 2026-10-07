@@ -61,12 +61,12 @@ export const SEVERITY_INFO = {
   }
 };
 
-// 사망률 정보
+// 사망률 정보 (CANONIC, Moreau 2013 — rate: 28일, rate90: 90일)
 export const MORTALITY_INFO = {
-  [ACLF_GRADES.NO_ACLF]: { rate: '< 5%', severity: SEVERITY_LEVELS.LOW },
-  [ACLF_GRADES.ACLF_1]: { rate: '~22%', severity: SEVERITY_LEVELS.MODERATE },
-  [ACLF_GRADES.ACLF_2]: { rate: '~32%', severity: SEVERITY_LEVELS.HIGH },
-  [ACLF_GRADES.ACLF_3]: { rate: '> 70%', severity: SEVERITY_LEVELS.CRITICAL }
+  [ACLF_GRADES.NO_ACLF]: { rate: '4.7%', rate90: '14%', severity: SEVERITY_LEVELS.LOW },
+  [ACLF_GRADES.ACLF_1]: { rate: '22.1%', rate90: '40.7%', severity: SEVERITY_LEVELS.MODERATE },
+  [ACLF_GRADES.ACLF_2]: { rate: '32.0%', rate90: '52.3%', severity: SEVERITY_LEVELS.HIGH },
+  [ACLF_GRADES.ACLF_3]: { rate: '76.7%', rate90: '79.1%', severity: SEVERITY_LEVELS.CRITICAL }
 };
 
 // 장기 이름 (영어 - 한글 매핑)
@@ -86,10 +86,16 @@ export const VALIDATION_RANGES = {
   inr: { min: 0.5, max: 10, unit: '' },
   sbp: { min: 60, max: 250, unit: 'mmHg' },
   dbp: { min: 30, max: 150, unit: 'mmHg' },
+  map: { min: 30, max: 150, unit: 'mmHg' },
   pao2: { min: 30, max: 600, unit: 'mmHg' },
   spo2: { min: 70, max: 100, unit: '%' },
   o2Flow: { min: 0, max: 6, unit: 'L/min' },
-  pfRatio: { min: 50, max: 600, unit: '' }
+  fio2Direct: { min: 21, max: 100, unit: '%' },
+  pfRatio: { min: 50, max: 600, unit: '' },
+  // 다음 단계 점수 (CLIF-C ACLF / CLIF-C AD)
+  age: { min: 18, max: 100, unit: '세' },
+  wbc: { min: 100, max: 100000, unit: 'cells/µL' },
+  sodium: { min: 100, max: 180, unit: 'mmol/L' }
 };
 
 // HE (간성뇌증) 등급 옵션
@@ -99,14 +105,6 @@ export const HE_OPTIONS = [
   { value: 2, label: 'Grade 3-4', description: '중증' }
 ];
 
-// 신장 상태 분류
-export const KIDNEY_STATUS = {
-  FAILURE: 'kidney_failure',
-  MODERATE_DYSFUNCTION: 'kidney_dysfunction_moderate',
-  MILD_DYSFUNCTION: 'kidney_dysfunction_mild',
-  NORMAL: 'kidney_normal'
-};
-
 // 초기 입력값
 export const INITIAL_INPUTS = {
   bilirubin: '',
@@ -114,12 +112,25 @@ export const INITIAL_INPUTS = {
   rrt: false,
   heGrade: 0,
   inr: '',
+  mapMode: 'bp',      // 'bp': SBP/DBP로 계산, 'direct': MAP 직접 입력
   sbp: '',
   dbp: '',
+  mapDirect: '',
   vasopressors: false,
-  pao2: '',
-  o2Flow: '',
+  mechVent: false,
+  mechVentReason: '', // 'he': 간성뇌증 → 뇌부전, 'other': 그 외 → 호흡부전
   useSpO2: false,
-  spo2: ''
+  pao2: '',
+  spo2: '',
+  fio2Mode: 'flow',   // 'flow': 비강 캐뉼라 유량, 'direct': FiO2 직접 입력
+  o2Flow: '',
+  fio2Direct: ''
+};
+
+// 다음 단계 점수 입력 (ACLF: 나이·WBC, ACLF 아님: 나이·WBC·Na)
+export const INITIAL_FOLLOW_UP = {
+  age: '',
+  wbc: '',
+  sodium: ''
 };
 

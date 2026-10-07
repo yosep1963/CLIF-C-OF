@@ -1,0 +1,12 @@
+# Netlify 응답 헤더 (폴더 업로드와 Git 배포 모두 적용)
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+
+# 파일 이름에 해시가 붙는 빌드 결과물만 오래 캐시 (sw.js, index.html 등은 Netlify 기본값으로 매번 확인)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

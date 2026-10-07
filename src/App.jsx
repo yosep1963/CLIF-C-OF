@@ -1,12 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { OrganInput } from './components/InputForm';
 import { DiagnosisResult } from './components/Results';
 import { DiagnosticHistory } from './components/History';
 import { useDiagnosisHistory } from './hooks/useLocalStorage';
-import { validateAllInputs, calculatePFRatio } from './logic/validation';
-import { calculateAllScores } from './logic/organScoring';
-import { determineACLFGrade, getMortalityInfo, getSeverityColor } from './logic/aclfGrading';
-import { INITIAL_INPUTS } from './constants';
+import { validateAllInputs } from './logic/validation';
+import { buildDiagnosis, recomputeHistoryRecord } from './logic/diagnosis';
+import { INITIAL_INPUTS, INITIAL_FOLLOW_UP } from './constants';
+import { version } from '../package.json';
 import './styles/global.css';
 
 function App() {
@@ -14,7 +14,16 @@ function App() {
   const [inputs, setInputs] = useState(INITIAL_INPUTS);
   const [errors, setErrors] = useState({});
   const [result, setResult] = useState(null);
+  const [followUp, setFollowUp] = useState(INITIAL_FOLLOW_UP);
+  const [saveNotice, setSaveNotice] = useState(false);
   const { history, addToHistory, removeFromHistory, clearHistory, loadFromHistory } = useDiagnosisHistory();
+
+  // 저장 알림은 잠시 보여준 뒤 숨김
+  useEffect(() => {
+    if (!saveNotice) return undefined;
+    const timer = setTimeout(() => setSaveNotice(false), 2500);
+    return () => clearTimeout(timer);
+  }, [saveNotice]);
 
   const handleInputChange = useCallback((newInputs) => {
     setInputs(newInputs);
@@ -29,44 +38,27 @@ function App() {
       return;
     }
 
-    const validInputs = validation.validatedInputs;
-    const pfRatio = calculatePFRatio(validInputs.pao2, validInputs.fio2);
-    const inputsWithPF = { ...validInputs, pfRatio };
-
-    const scoreResults = calculateAllScores(inputsWithPF);
-    const aclfResult = determineACLFGrade(scoreResults, inputsWithPF);
-    const mortalityInfo = getMortalityInfo(aclfResult.grade);
-
-    const diagnosisResult = {
-      inputs: inputsWithPF,
-      scores: scoreResults.scores,
-      totalScore: scoreResults.totalScore,
-      grade: aclfResult.grade,
-      rationale: aclfResult.rationale,
-      rationaleKr: aclfResult.rationaleKr,
-      organFailures: aclfResult.organFailures,
-      organFailureCount: aclfResult.organFailureCount,
-      mortality: mortalityInfo.rate,
-      severity: mortalityInfo.severity,
-      severityColor: getSeverityColor(mortalityInfo.severity)
-    };
-
-    setResult(diagnosisResult);
+    // P/F·S/F, FiO2, MAP은 validateAllInputs에서 이미 계산됨
+    setResult(buildDiagnosis(validation.validatedInputs));
     setActiveTab('result');
   }, [inputs]);
 
   const handleSaveResult = useCallback(() => {
     if (result) {
-      addToHistory(result);
-      alert('진단 결과가 저장되었습니다.');
+      // 현재 기준으로 만든 결과와 다음 단계 입력(나이·WBC·Na)을 저장
+      addToHistory({ ...buildDiagnosis(result.inputs), followUp });
+      setSaveNotice(true);
     }
-  }, [result, addToHistory]);
+  }, [result, followUp, addToHistory]);
 
   const handleLoadHistory = useCallback((id) => {
     const savedResult = loadFromHistory(id);
     if (savedResult) {
-      setResult(savedResult);
-      setInputs(savedResult.inputs);
+      // 이전 버전에서 저장한 기록도 현재 기준으로 다시 계산해서 보여줌
+      setResult(recomputeHistoryRecord(savedResult));
+      // 이전 버전 기록에는 새 입력 항목이 없으므로 기본값과 합침
+      setInputs({ ...INITIAL_INPUTS, ...savedResult.inputs });
+      setFollowUp({ ...INITIAL_FOLLOW_UP, ...savedResult.followUp });
       setActiveTab('result');
     }
   }, [loadFromHistory]);
@@ -75,6 +67,7 @@ function App() {
     setInputs(INITIAL_INPUTS);
     setErrors({});
     setResult(null);
+    setFollowUp(INITIAL_FOLLOW_UP);
   }, []);
 
   return (
@@ -125,7 +118,13 @@ function App() {
 
         {activeTab === 'result' && (
           <section className="section fade-in">
-            <DiagnosisResult result={result} onSave={handleSaveResult} />
+            <DiagnosisResult
+              result={result}
+              onSave={handleSaveResult}
+              saveNotice={saveNotice}
+              followUp={followUp}
+              onFollowUpChange={setFollowUp}
+            />
             <button
               className="reset-button"
               onClick={() => setActiveTab('input')}
@@ -147,6 +146,11 @@ function App() {
           </section>
         )}
       </main>
+
+      <footer className="app-footer">
+        <p>CLIF-C OF Calculator v{version} · 기준: CANONIC, Jalan 2014·2015, EASL CPG 2023</p>
+        <p>본 계산기는 참고용이며, 최종 진단 및 치료 결정은 반드시 전문의와 상담하세요.</p>
+      </footer>
     </div>
   );
 }

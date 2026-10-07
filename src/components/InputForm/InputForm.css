@@ -278,12 +278,12 @@
   color: #2563eb;
 }
 
-/* Oxygen Source Toggle (PaO2/SpO2) */
-.oxygen-source-toggle {
+/* Option Toggle (혈압 입력 방식, 기계환기 이유, 산소화 지표, FiO2 입력 방식) */
+.option-toggle {
   margin-bottom: 1rem;
 }
 
-.oxygen-source-toggle .toggle-label {
+.option-toggle .toggle-label {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
@@ -362,40 +362,12 @@
   flex: 1;
 }
 
-/* Estimated Value Display (SpO2 → PaO2) */
-.estimated-value-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding: 0.625rem;
-  background: #fff7ed;
-  border-radius: 8px;
-  border: 1px solid #fed7aa;
-}
-
-.estimated-value-label {
-  font-size: 0.875rem;
-  color: #9a3412;
-  font-weight: 500;
-}
-
-.estimated-value {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #c2410c;
-}
-
-.estimated-note {
-  font-size: 0.75rem;
-  color: #9a3412;
-}
-
-.pf-note {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-left: 0.25rem;
+/* 안내 문구 (기계환기 등으로 점수가 정해질 때) */
+.input-note {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #4b5563;
 }
 
 /* Mobile Responsive */

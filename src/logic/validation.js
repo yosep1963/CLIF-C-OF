@@ -47,22 +47,23 @@ export function validateValue(field, value) {
 }
 
 /**
- * P/F Ratio 계산
- * @param {number} pao2 - PaO2 (mmHg)
+ * 산소화 비 계산: P/F (PaO2/FiO2) 또는 S/F (SpO2/FiO2)
+ * 점수 판정에 쓰므로 반올림하지 않음 (화면에서만 반올림)
+ * @param {number} value - PaO2 (mmHg) 또는 SpO2 (%)
  * @param {number} fio2 - FiO2 (% 또는 소수)
  * @returns {number|null}
  */
-export function calculatePFRatio(pao2, fio2) {
-  const pao2Val = safeParseFloat(pao2);
+export function calculateOxygenRatio(value, fio2) {
+  const numerator = safeParseFloat(value);
   const fio2Val = safeParseFloat(fio2);
 
-  if (pao2Val === null || fio2Val === null) return null;
+  if (numerator === null || fio2Val === null) return null;
 
   // FiO2가 1보다 크면 백분율로 간주
   const fio2Decimal = fio2Val > 1 ? fio2Val / 100 : fio2Val;
   if (fio2Decimal <= 0) return null;
 
-  return Math.round(pao2Val / fio2Decimal);
+  return numerator / fio2Decimal;
 }
 
 /**
@@ -95,53 +96,22 @@ export function calculateFiO2FromFlow(o2FlowLpm) {
 }
 
 /**
- * SpO2에서 PaO2 추정 (Severinghaus 공식 역산)
- * 공식: PaO2 = 11.2 * ln(SpO2 / (100 - SpO2)) + 26.6
- * @param {number} spo2 - 산소포화도 (%)
- * @returns {number|null}
- */
-export function estimatePaO2FromSpO2(spo2) {
-  const spo2Val = safeParseFloat(spo2);
-  if (spo2Val === null || spo2Val < 70 || spo2Val >= 100) return null;
-
-  const ratio = spo2Val / (100 - spo2Val);
-  const estimatedPaO2 = 11.2 * Math.log(ratio) + 26.6;
-
-  // 결과를 합리적인 범위로 제한 (30-150 mmHg)
-  return Math.round(Math.max(30, Math.min(150, estimatedPaO2)));
-}
-
-/**
- * SpO2 사용 시 경고 레벨 반환
+ * SpO2 사용 시 경고 반환 (S/F 비는 SpO2 97% 이하에서만 P/F와 잘 맞음)
  * @param {number} spo2 - 산소포화도 (%)
  * @returns {{ level: string, message: string }}
  */
 export function getSpO2Warning(spo2) {
   const spo2Val = safeParseFloat(spo2);
 
-  if (spo2Val === null) {
-    return { level: 'none', message: '' };
-  }
-
-  if (spo2Val > 97) {
+  if (spo2Val !== null && spo2Val > 97) {
     return {
       level: 'warning',
-      message: 'SpO2 > 97%: PaO2 추정이 매우 부정확합니다. 가능하면 동맥혈 가스 분석을 권장합니다.'
-    };
-  }
-
-  if (spo2Val > 94) {
-    return {
-      level: 'caution',
-      message: 'SpO2 94-97%: PaO2 추정치의 정확도가 제한됩니다.'
+      message: 'SpO₂ 97% 초과: S/F 비가 실제 산소화를 반영하지 못할 수 있습니다. 가능하면 동맥혈 가스(PaO₂)로 평가하세요.'
     };
   }
 
   return { level: 'none', message: '' };
 }
-
-// 검증할 필드 목록 정의
-const REQUIRED_FIELDS = ['bilirubin', 'creatinine', 'inr', 'sbp', 'dbp', 'o2Flow'];
 
 /**
  * 단일 필드 검증 및 결과 저장 헬퍼
@@ -165,63 +135,117 @@ export function validateAllInputs(inputs) {
   const errors = {};
   const validatedInputs = {};
 
-  // 기본 필드들 검증
-  REQUIRED_FIELDS.forEach(field => {
-    validateField(field, inputs[field], errors, validatedInputs);
-  });
+  // 간, 응고
+  validateField('bilirubin', inputs.bilirubin, errors, validatedInputs);
+  validateField('inr', inputs.inr, errors, validatedInputs);
 
-  // MAP 계산 (SBP, DBP가 모두 유효할 때)
-  if (validatedInputs.sbp && validatedInputs.dbp) {
-    validatedInputs.map = calculateMAP(validatedInputs.sbp, validatedInputs.dbp);
+  // 신장: RRT면 3점이므로 Creatinine 불필요
+  validatedInputs.rrt = Boolean(inputs.rrt);
+  if (!validatedInputs.rrt) {
+    validateField('creatinine', inputs.creatinine, errors, validatedInputs);
   }
 
-  // SpO2 모드 플래그
-  validatedInputs.useSpO2 = Boolean(inputs.useSpO2);
+  // 뇌
+  validatedInputs.heGrade = inputs.heGrade || 0;
 
-  // PaO2 또는 SpO2 검증 (모드에 따라)
-  if (inputs.useSpO2) {
-    const spo2Result = validateValue('spo2', inputs.spo2);
-    if (!spo2Result.valid) {
-      errors.spo2 = spo2Result.error;
-    } else {
-      validatedInputs.spo2 = spo2Result.value;
-      const estimatedPaO2 = estimatePaO2FromSpO2(spo2Result.value);
-      if (estimatedPaO2) {
-        validatedInputs.pao2 = estimatedPaO2;
-        validatedInputs.pao2Source = 'estimated';
+  // 순환: 승압제 사용 중이면 3점이므로 혈압 불필요
+  validatedInputs.vasopressors = Boolean(inputs.vasopressors);
+  validatedInputs.mapMode = inputs.mapMode === 'direct' ? 'direct' : 'bp';
+  if (!validatedInputs.vasopressors) {
+    if (validatedInputs.mapMode === 'direct') {
+      const mapResult = validateValue('map', inputs.mapDirect);
+      if (!mapResult.valid) {
+        errors.mapDirect = mapResult.error;
       } else {
-        errors.spo2 = 'SpO2 값으로 PaO2를 추정할 수 없습니다 (70-99% 범위 필요)';
+        validatedInputs.mapDirect = mapResult.value;
+        validatedInputs.map = mapResult.value;
+      }
+    } else {
+      const sbpValid = validateField('sbp', inputs.sbp, errors, validatedInputs);
+      const dbpValid = validateField('dbp', inputs.dbp, errors, validatedInputs);
+      if (sbpValid && dbpValid) {
+        if (validatedInputs.dbp >= validatedInputs.sbp) {
+          errors.dbp = '이완기 혈압은 수축기 혈압보다 낮아야 합니다';
+        } else {
+          validatedInputs.map = calculateMAP(validatedInputs.sbp, validatedInputs.dbp);
+        }
       }
     }
-  } else {
-    const pao2Result = validateValue('pao2', inputs.pao2);
-    if (!pao2Result.valid) {
-      errors.pao2 = pao2Result.error;
+  }
+
+  // 기계환기: 간성뇌증 때문이면 뇌부전, 그 외 이유면 호흡부전 (Jalan 2014)
+  validatedInputs.mechVent = Boolean(inputs.mechVent);
+  if (validatedInputs.mechVent) {
+    if (inputs.mechVentReason === 'he' || inputs.mechVentReason === 'other') {
+      validatedInputs.mechVentReason = inputs.mechVentReason;
     } else {
-      validatedInputs.pao2 = pao2Result.value;
-      validatedInputs.pao2Source = 'measured';
+      errors.mechVentReason = '기계환기 이유를 선택해주세요';
     }
   }
 
-  // FiO2 계산
-  if (validatedInputs.o2Flow !== undefined) {
-    validatedInputs.fio2 = calculateFiO2FromFlow(validatedInputs.o2Flow);
-  }
+  // 호흡: 호흡부전으로 기계환기 중이면 3점이므로 산소화 지표 불필요
+  validatedInputs.useSpO2 = Boolean(inputs.useSpO2);
+  validatedInputs.fio2Mode = inputs.fio2Mode === 'direct' ? 'direct' : 'flow';
+  if (validatedInputs.mechVentReason !== 'other') {
+    const oxygenField = validatedInputs.useSpO2 ? 'spo2' : 'pao2';
+    const oxygenValid = validateField(oxygenField, inputs[oxygenField], errors, validatedInputs);
 
-  // P/F ratio 계산
-  if (validatedInputs.pao2 && validatedInputs.fio2) {
-    validatedInputs.pfRatio = calculatePFRatio(validatedInputs.pao2, validatedInputs.fio2);
-  }
+    if (validatedInputs.fio2Mode === 'direct') {
+      const fio2Result = validateValue('fio2Direct', inputs.fio2Direct);
+      if (!fio2Result.valid) {
+        errors.fio2Direct = fio2Result.error;
+      } else {
+        validatedInputs.fio2Direct = fio2Result.value;
+        validatedInputs.fio2 = fio2Result.value;
+      }
+    } else if (validateField('o2Flow', inputs.o2Flow, errors, validatedInputs)) {
+      validatedInputs.fio2 = calculateFiO2FromFlow(validatedInputs.o2Flow);
+    }
 
-  // 토글 값들
-  validatedInputs.rrt = Boolean(inputs.rrt);
-  validatedInputs.vasopressors = Boolean(inputs.vasopressors);
-  validatedInputs.heGrade = inputs.heGrade || 0;
+    // PaO2 → P/F, SpO2 → S/F (CLIF-C OF는 SpO2를 PaO2로 환산하지 않고 S/F 기준을 따로 둠)
+    if (oxygenValid && validatedInputs.fio2) {
+      const ratio = calculateOxygenRatio(validatedInputs[oxygenField], validatedInputs.fio2);
+      if (validatedInputs.useSpO2) {
+        validatedInputs.sfRatio = ratio;
+      } else {
+        validatedInputs.pfRatio = ratio;
+      }
+    }
+  }
 
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
     validatedInputs
+  };
+}
+
+/**
+ * 다음 단계 점수 입력 검증 (ACLF: 나이·WBC, ACLF 아님: 나이·WBC·Na)
+ * 빈 칸은 오류로 보지 않고 아직 계산하지 않음
+ * @param {Object} values - { age, wbc, sodium } 입력값
+ * @param {{ needsSodium: boolean }} options
+ * @returns {{ isComplete: boolean, errors: Object, validated: Object }}
+ */
+export function validateFollowUpInputs(values, { needsSodium }) {
+  const fields = needsSodium ? ['age', 'wbc', 'sodium'] : ['age', 'wbc'];
+  const errors = {};
+  const validated = {};
+
+  fields.forEach((field) => {
+    if (isEmpty(values[field])) return;
+    const result = validateValue(field, values[field]);
+    if (result.valid) {
+      validated[field] = result.value;
+    } else {
+      errors[field] = result.error;
+    }
+  });
+
+  return {
+    isComplete: fields.every((field) => field in validated),
+    errors,
+    validated
   };
 }
 

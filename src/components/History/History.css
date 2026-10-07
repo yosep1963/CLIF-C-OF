@@ -86,12 +86,32 @@
 }
 
 .history-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
   text-align: right;
 }
 
 .history-score {
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.history-follow-up {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* 이전 버전 기록을 현재 기준으로 다시 계산해 판정·총점이 바뀐 경우 */
+.history-changed {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 999px;
 }
 
 .remove-btn {

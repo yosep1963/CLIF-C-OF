@@ -1,11 +1,12 @@
 import React, { memo, useMemo } from 'react';
 import OrganCard from './OrganCard';
 import SeverityIndicator from './SeverityIndicator';
+import FollowUpScore from './FollowUpScore';
 import { getOrganDetails } from '../../logic/organScoring';
 import { ORGAN_NAMES, GRADE_COLORS, ACLF_GRADES } from '../../constants';
 import './Results.css';
 
-function DiagnosisResult({ result, onSave }) {
+function DiagnosisResult({ result, onSave, saveNotice, followUp, onFollowUpChange }) {
   // 장기 목록 메모이제이션 (Hook은 early return 전에 호출)
   const organList = useMemo(() => {
     if (!result) return [];
@@ -21,12 +22,17 @@ function DiagnosisResult({ result, onSave }) {
     grade,
     rationaleKr,
     mortality,
+    mortality90,
     severity,
     organFailureCount,
-    totalScore
+    totalScore,
+    isChanged,
+    savedGrade,
+    savedTotalScore
   } = result;
 
   const gradeColor = GRADE_COLORS[grade] || '#6B7280';
+  const isAclf = grade !== ACLF_GRADES.NO_ACLF;
 
   return (
     <div className="diagnosis-result">
@@ -44,8 +50,23 @@ function DiagnosisResult({ result, onSave }) {
         </div>
       </div>
 
+      {/* 이전 버전 이력: 현재 기준으로 다시 계산한 경우 */}
+      {isChanged && (
+        <p className="recompute-note" role="note">
+          저장 당시 판정은 {savedGrade} (총점 {savedTotalScore}점)이었습니다.
+          판정 기준이 바뀌어 현재 기준으로 다시 계산했습니다.
+        </p>
+      )}
+
       {/* 위험도 표시 */}
-      <SeverityIndicator severity={severity} mortality={mortality} />
+      <SeverityIndicator severity={severity} mortality={mortality} mortality90={mortality90} />
+
+      {/* 재평가 안내 (EASL CPG 2023: 예후는 3–7일 장기지지 후 재평가 시점으로 판단) */}
+      <p className="reassess-note">
+        {isAclf
+          ? 'ACLF 등급은 치료 중 바뀔 수 있습니다. 장기지지 치료 3–7일 후 다시 평가한 등급과 점수가 예후를 더 정확히 반영합니다.'
+          : '입원 중 상태가 나빠지면 다시 평가하세요. ACLF가 생기면 CLIF-C ACLF 점수로 예후를 봅니다.'}
+      </p>
 
       {/* 요약 정보 */}
       <div className="result-summary">
@@ -69,22 +90,25 @@ function DiagnosisResult({ result, onSave }) {
         </div>
       </div>
 
-      {/* 저장 버튼 */}
-      {onSave && (
-        <button className="save-button" onClick={onSave}>
-          결과 저장
-        </button>
+      {/* 다음 단계: ACLF면 CLIF-C ACLF, 아니면 CLIF-C AD */}
+      {onFollowUpChange && (
+        <FollowUpScore
+          diagnosis={result}
+          values={followUp}
+          onChange={onFollowUpChange}
+        />
       )}
 
-      {/* ACLF인 경우 다음 단계 안내 */}
-      {grade !== ACLF_GRADES.NO_ACLF && (
-        <div className="next-step-notice">
-          <p>
-            정밀 예후 측정을 위해 <strong>CLIF-C ACLF Score</strong> 계산을
-            권장합니다.
-          </p>
-          <small>(Age, WBC 추가 입력 필요)</small>
-        </div>
+      {/* 저장 버튼 */}
+      {onSave && (
+        <>
+          <button className="save-button" onClick={onSave}>
+            결과 저장
+          </button>
+          {saveNotice && (
+            <p className="save-notice" role="status">진단 결과를 이력에 저장했습니다.</p>
+          )}
+        </>
       )}
     </div>
   );

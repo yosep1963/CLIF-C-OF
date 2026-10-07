@@ -66,14 +66,52 @@ export const scoreRespiratory = (pfRatio) => {
   return 3;
 };
 
+// SpO2/FiO2 기준 (PaO2가 없을 때, Jalan 2014)
+export const scoreRespiratorySF = (sfRatio) => {
+  if (sfRatio == null) return null;
+  if (sfRatio > 357) return 1;
+  if (sfRatio > 214) return 2;
+  return 3;
+};
+
+// 기계환기: 간성뇌증 때문이면 뇌 3점, 그 외 이유면 호흡 3점
+const isVentForHE = (inputs) => inputs.mechVent && inputs.mechVentReason === 'he';
+const isVentForRespiratory = (inputs) => inputs.mechVent && inputs.mechVentReason === 'other';
+
 // 점수 계산 함수 매핑
 const SCORE_FUNCTIONS = {
   liver: (inputs) => scoreLiver(inputs.bilirubin),
   kidney: (inputs) => scoreKidney(inputs.creatinine, inputs.rrt),
-  brain: (inputs) => scoreBrain(inputs.heGrade),
+  brain: (inputs) => (isVentForHE(inputs) ? 3 : scoreBrain(inputs.heGrade)),
   coagulation: (inputs) => scoreCoagulation(inputs.inr),
   circulation: (inputs) => scoreCirculation(inputs.map, inputs.vasopressors),
-  respiratory: (inputs) => scoreRespiratory(inputs.pfRatio)
+  respiratory: (inputs) => {
+    if (isVentForRespiratory(inputs)) return 3;
+    return inputs.useSpO2 ? scoreRespiratorySF(inputs.sfRatio) : scoreRespiratory(inputs.pfRatio);
+  }
+};
+
+// 장기부전으로 보는 최소 점수: 신장만 2점(Cr ≥2.0)부터, 나머지는 3점 (Jalan 2014)
+const FAILURE_MIN_SCORE = {
+  liver: 3,
+  kidney: 2,
+  brain: 3,
+  coagulation: 3,
+  circulation: 3,
+  respiratory: 3
+};
+
+const isOrganFailure = (organ, score) => score != null && score >= FAILURE_MIN_SCORE[organ];
+
+// 신기능장애: Cr 1.5-1.9 (2.0 이상·RRT는 신부전) — ACLF-1 판정 기준
+export const hasKidneyDysfunction = (creatinine, rrt = false) =>
+  !rrt && creatinine >= 1.5 && creatinine < 2.0;
+
+// 카드에 기능장애로 표시할 값: 신장 Cr 1.5-1.9, 뇌 HE 1-2(2점) — ACLF-1 판정에 쓰이는 값
+const isOrganDysfunction = (organ, score, inputs) => {
+  if (organ === 'kidney') return hasKidneyDysfunction(inputs.creatinine, inputs.rrt);
+  if (organ === 'brain') return score === 2;
+  return false;
 };
 
 /**
@@ -93,9 +131,9 @@ export function calculateAllScores(inputs) {
   const validScores = Object.values(scores).filter((s) => s !== null);
   const totalScore = validScores.reduce((sum, s) => sum + s, 0);
 
-  // 장기부전(3점) 목록
+  // 장기부전 목록
   const organFailures = Object.entries(scores)
-    .filter(([, score]) => score === 3)
+    .filter(([organ, score]) => isOrganFailure(organ, score))
     .map(([organ]) => organ);
 
   return {
@@ -109,20 +147,22 @@ export function calculateAllScores(inputs) {
 /**
  * 점수에 따른 상태 정보 반환
  * @param {number|null} score - 점수
+ * @param {boolean} isFailure - 장기부전 여부 (신장은 2점부터 부전)
  * @returns {{ status: string, text: string, color: string }}
  */
-export function getScoreStatus(score) {
+export function getScoreStatus(score, isFailure = score === 3) {
   if (score === null) {
     return { status: 'unknown', text: '미입력', color: 'gray' };
   }
+  const level = isFailure ? 3 : score;
   const colorMap = { 1: 'green', 2: 'yellow', 3: 'red' };
   const textMap = { 1: '정상', 2: '주의', 3: '부전' };
   const statusMap = { 1: 'normal', 2: 'warning', 3: 'failure' };
 
   return {
-    status: statusMap[score] || 'unknown',
-    text: textMap[score] || '-',
-    color: colorMap[score] || 'gray'
+    status: statusMap[level] || 'unknown',
+    text: textMap[level] || '-',
+    color: colorMap[level] || 'gray'
   };
 }
 
@@ -132,12 +172,18 @@ const VALUE_EXTRACTORS = {
   kidney: (inputs) => inputs.rrt
     ? { value: 'RRT', unit: '' }
     : { value: inputs.creatinine, unit: 'mg/dL' },
-  brain: (inputs) => ({ value: HE_LABELS[inputs.heGrade] || 'Grade 0', unit: '' }),
+  brain: (inputs) => isVentForHE(inputs)
+    ? { value: '기계환기 (HE)', unit: '' }
+    : { value: HE_LABELS[inputs.heGrade] || 'Grade 0', unit: '' },
   coagulation: (inputs) => ({ value: inputs.inr, unit: '' }),
   circulation: (inputs) => inputs.vasopressors
     ? { value: '승압제 사용', unit: '' }
     : { value: inputs.map, unit: 'mmHg' },
-  respiratory: (inputs) => ({ value: inputs.pfRatio, unit: '' })
+  respiratory: (inputs) => {
+    if (isVentForRespiratory(inputs)) return { value: '기계환기', unit: '' };
+    const ratio = inputs.sfRatio ?? inputs.pfRatio;
+    return { value: ratio == null ? null : Math.round(ratio), unit: '' };
+  }
 };
 
 /**
@@ -148,19 +194,23 @@ const VALUE_EXTRACTORS = {
  * @returns {Object} 장기 상세 정보
  */
 export function getOrganDetails(organ, score, inputs) {
-  const { status, text, color } = getScoreStatus(score);
+  const isFailure = isOrganFailure(organ, score);
+  const isDysfunction = !isFailure && isOrganDysfunction(organ, score, inputs);
+  const { status, text, color } = isDysfunction
+    ? { status: 'dysfunction', text: '기능장애', color: 'yellow' }
+    : getScoreStatus(score, isFailure);
   const { value, unit } = VALUE_EXTRACTORS[organ]?.(inputs) || { value: '', unit: '' };
 
   return {
     organ,
     name: ORGAN_NAMES[organ],
-    indicator: ORGAN_INDICATORS[organ],
+    indicator: organ === 'respiratory' && inputs.sfRatio != null ? 'SpO₂/FiO₂' : ORGAN_INDICATORS[organ],
     score,
     status,
     statusText: text,
     color,
     value,
     unit,
-    isFailure: score === 3
+    isFailure
   };
 }
